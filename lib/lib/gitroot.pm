@@ -38,7 +38,6 @@ sub import
     no strict 'refs';
     no warnings 'redefine';
     *{"$module\::GIT_ROOT"} = \&GIT_ROOT;
-    use strict 'refs';
 }
 
 sub _is_dir

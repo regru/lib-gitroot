@@ -4,6 +4,8 @@ use Test::More tests => 75;
 use Modern::Perl;
 use lib::gitroot ();
 
+$SIG{__WARN__} = sub { die @_ };
+
 sub test_case
 {
     my ($absdir, $is_dir, $gitdirs, $expecteddir) = @_;

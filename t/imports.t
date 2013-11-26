@@ -18,6 +18,8 @@ sub localize_gitroot
     $cb->();
 }
 
+$SIG{__WARN__} = sub { die @_ };
+
 describe "libgitroot" => sub {
     describe "lib" => sub {
         it "should work" => sub {
