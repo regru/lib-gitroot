@@ -16,6 +16,7 @@ sub import
     $args{set_root} = 1 if defined $args{lib};
 
     my ($module, $filename) = caller;
+    $filename = $args{use_base_dir} if defined $args{use_base_dir};
 
     if ($args{set_root}) {
 

@@ -9,7 +9,7 @@ use File::Path;
 use Test::More;
 use File::Spec;
 
-plan tests => 80;
+plan tests => 82;
 
 my $tmp_dir = tempdir("XXXXXXXX", TMPDIR => 1, CLEANUP => 1);
 
@@ -184,17 +184,26 @@ test_case ('project/scripts', 'file.pl', 'project');
 test_case ('project/A/B', 'file.pl', 'project');
 test_case ('project/A/B/C', 'file.pl', 'project');
 
-exit;
+mkpath "$tmp_dir/mainproject/scripts";
+mkpath "$tmp_dir/mainproject/.git";
+mkpath "$tmp_dir/library";
 
-my ($res, $status) = run_code("$tmp_dir/A", "$tmp_dir/B", $libroot_dir,
-    'main.pl' => q{
+my ($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
+    'script.pl' => q{
         use CommonMod;
+        print join("\n", @INC);
     },
-    '../B/CommonMod.pm' => q{
-        use lib::gitroot qw/:lib/
+    "$tmp_dir/library/CommonMod.pm" => q{
+        package CommonMod;
+        use lib::gitroot ();
+        sub import {
+            my ($module, $file) = caller();
+            lib::gitroot->import(':lib', use_base_dir => $file)
+        }
+        1;
     }
 );
-
-print $res, $status;
+is $status, 0;
+like $res, qr{mainproject/lib};
 
 1;
