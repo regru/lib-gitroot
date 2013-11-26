@@ -20,18 +20,18 @@ $libroot_dir =~ s/\Q$libroot_module\E$//;
 
 sub run_code
 {
-    my ($script_root, $inc_subdir, $lib, $filename, $code, %allcode) = @_;
+    my ($script_root, $inc_subdir, $filename, $code, %allcode) = @_;
 
     mkpath $script_root;
     mkpath my $inc_dir = "$script_root/$inc_subdir";
 
     $allcode{$filename} = $code;
     for (keys %allcode) {
-        open my $f, ">", "$script_root/$_" or die;
+        open my $f, ">", "$script_root/$_" or die "$script_root/$_";
         print $f $allcode{$_};
         close $f;
     }
-    my $res = `$^X -I$lib -I$inc_dir $script_root/$filename 2>&1`;
+    my $res = `$^X -I$libroot_dir -I$inc_dir $script_root/$filename 2>&1`;
     my $status = $?;
     unlink $_ for keys %allcode;
     ($res, $status);
@@ -59,34 +59,34 @@ sub test_case {
 
     my ($res, $status);
 
-    ($res, $status) = run_code($full_script_dir, '.', $libroot_dir, $script_file, q{
+    ($res, $status) = run_code($full_script_dir, '.', $script_file, q{
         use lib::gitroot qw/:lib/;
         print join("\n", @INC);
     });
     is $status, 0;
     like $res, regexp_for_lib($tmp_dir, $git_dir, 'lib'), "should set lib";
 
-    ($res, $status) = run_code($full_script_dir, '.', $libroot_dir, $script_file, q{
+    ($res, $status) = run_code($full_script_dir, '.', $script_file, q{
         use lib::gitroot lib => 'somelib';
         print join("\n", @INC);
     });
     is $status, 0;
     like $res, regexp_for_lib($tmp_dir, $git_dir, 'somelib'), "should set custom lib";
 
-    ($res, $status) = run_code($full_script_dir, '.', $libroot_dir, $script_file, q{
+    ($res, $status) = run_code($full_script_dir, '.', $script_file, q{
         use lib::gitroot;
         print join("\n", @INC);
     });
     is $status, 0;
     unlike $res, regexp_for_anydir($tmp_dir, $git_dir), "should not set lib without lib tag";
-    ($res, $status) = run_code($full_script_dir, '.', $libroot_dir, $script_file, q{
+    ($res, $status) = run_code($full_script_dir, '.', $script_file, q{
         use lib::gitroot qw/:set_root/;
         print join("\n", @INC);
     });
     is $status, 0;
     unlike $res, regexp_for_anydir($tmp_dir, $git_dir), "should not set lib with :set_root";
 
-    ($res, $status) = run_code($full_script_dir, 'inc', $libroot_dir,
+    ($res, $status) = run_code($full_script_dir, 'inc',
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:set_root/;
@@ -101,7 +101,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice";
 
-    ($res, $status) = run_code($full_script_dir, 'inc', $libroot_dir,
+    ($res, $status) = run_code($full_script_dir, 'inc',
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:lib/;
@@ -116,7 +116,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice with lib tag";
 
-    ($res, $status) = run_code($full_script_dir, 'inc', $libroot_dir,
+    ($res, $status) = run_code($full_script_dir, 'inc',
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:lib/;
@@ -131,7 +131,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice with lib and set_root";
 
-    ($res, $status) = run_code($full_script_dir, 'inc', $libroot_dir,
+    ($res, $status) = run_code($full_script_dir, 'inc',
         'file.pl' => q{
             use mymod1;
             use mymod2;
@@ -149,7 +149,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice when used from different modules";
 
-    ($res, $status) = run_code($full_script_dir, 'inc', $libroot_dir,
+    ($res, $status) = run_code($full_script_dir, 'inc',
         'file.pl' => q{
             use mymod1;
             use mymod2;
@@ -182,5 +182,18 @@ test_case ('project', 'file.pl', 'project');
 test_case ('project/scripts', 'file.pl', 'project');
 test_case ('project/A/B', 'file.pl', 'project');
 test_case ('project/A/B/C', 'file.pl', 'project');
+
+exit;
+
+my ($res, $status) = run_code("$tmp_dir/A", "$tmp_dir/B", $libroot_dir,
+    'main.pl' => q{
+        use CommonMod;
+    },
+    '../B/CommonMod.pm' => q{
+        use lib::gitroot qw/:lib/
+    }
+);
+
+print $res, $status;
 
 1;
