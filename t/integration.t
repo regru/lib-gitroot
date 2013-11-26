@@ -2,20 +2,23 @@
 
 use Modern::Perl;
 
-use lib::gitroot (); # we don't need it here. but we need to locate genunise lib::root in in %INC
+use lib::gitroot (); # we don't need it here. but we need to locate genuine lib::root in %INC
 
 use File::Temp qw/tempdir/;
 use File::Path;
 use Test::More;
 use File::Spec;
 
-plan tests => 82;
+plan tests => 84;
 
 my $tmp_dir = tempdir("XXXXXXXX", TMPDIR => 1, CLEANUP => 1);
 
-my $libroot_module = 'lib/gitroot.pm';
-my $libroot_dir = $INC{$libroot_module};
-$libroot_dir =~ s/\Q$libroot_module\E$//;
+my $libroot_dir = do {
+    my $libroot_module = 'lib/gitroot.pm';
+    my $libroot_dir = $INC{$libroot_module};
+    $libroot_dir =~ s/\Q$libroot_module\E$//;
+    $libroot_dir;
+};
 
 
 sub run_code
@@ -100,7 +103,7 @@ sub test_case {
     );
 
     isnt $status, 0;
-    like $res, qr/Git Root aready set/, "should not set root twice";
+    like $res, qr/Git Root already set/, "should not set root twice";
 
     ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
@@ -115,7 +118,7 @@ sub test_case {
     );
 
     isnt $status, 0;
-    like $res, qr/Git Root aready set/, "should not set root twice with lib tag";
+    like $res, qr/Git Root already set/, "should not set root twice with lib tag";
 
     ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
@@ -130,7 +133,7 @@ sub test_case {
     );
 
     isnt $status, 0;
-    like $res, qr/Git Root aready set/, "should not set root twice with lib and set_root";
+    like $res, qr/Git Root already set/, "should not set root twice with lib and set_root";
 
     ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
@@ -148,7 +151,7 @@ sub test_case {
     );
 
     isnt $status, 0;
-    like $res, qr/Git Root aready set/, "should not set root twice when used from different modules";
+    like $res, qr/Git Root already set/, "should not set root twice when used from different modules";
 
     ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
@@ -174,7 +177,7 @@ sub test_case {
     );
 
     is $status, 0;
-    unlike $res, qr/Git Root aready set/, "should work fine when used from different modules indirectly";
+    unlike $res, qr/Git Root already set/, "should work fine when used from different modules indirectly";
     like $res, regexp_for_lib($tmp_dir, $git_dir, 'lib'), "should set custom lib";
 }
 
@@ -199,6 +202,30 @@ my ($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
         sub import {
             my ($module, $file) = caller();
             lib::gitroot->import(':lib', use_base_dir => $file)
+        }
+        1;
+    }
+);
+is $status, 0;
+like $res, qr{mainproject/lib};
+
+($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
+    'script.pl' => q{
+        use CommonMod;
+        use SomeMod;
+        print join("\n", @INC);
+    },
+    "$tmp_dir/library/SomeMod.pm" => q{
+        package SomeMod;
+        use CommonMod;
+        1;
+    },
+    "$tmp_dir/library/CommonMod.pm" => q{
+        package CommonMod;
+        use lib::gitroot ();
+        sub import {
+            my ($module, $file) = caller();
+            lib::gitroot->import(':lib', use_base_dir => $file, ':once')
         }
         1;
     }

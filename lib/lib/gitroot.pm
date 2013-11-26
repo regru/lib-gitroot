@@ -10,6 +10,10 @@ sub GIT_ROOT { $_GIT_ROOT };
 
 our %_default_values = ( lib => 'lib' );
 
+# :set_root
+# :lib (implies :set_root, same as lib => 'lib')
+# lib => library path
+# use_base_dir => 'somedir_or_filename'
 sub import
 {
     my ($class, %args) = map { /^:(.*)$/ ? ($1 => $_default_values{$1} || 1) : $_ } @_;
@@ -20,16 +24,19 @@ sub import
 
     if ($args{set_root}) {
 
-        die "Git Root aready set" if defined $_GIT_ROOT;
-
-        $filename //= $args{path};
-        my $absfilename = File::Spec->rel2abs($filename);
-        $_GIT_ROOT = _find_git_dir( $absfilename, -d $filename );
-        lib->import($_GIT_ROOT.'/'.$args{lib}) if defined $args{lib} and defined $_GIT_ROOT;
+        if (defined $_GIT_ROOT) {
+            die "Git Root already set" unless $args{once};
+        } else {
+            $filename //= $args{path};
+            my $absfilename = File::Spec->rel2abs($filename);
+            $_GIT_ROOT = _find_git_dir( $absfilename, _is_dir($filename) );
+            lib->import($_GIT_ROOT.'/'.$args{lib}) if defined $args{lib} and defined $_GIT_ROOT;
+        }
     }
 
 
     no strict 'refs';
+    no warnings 'redefine';
     *{"$module\::GIT_ROOT"} = \&GIT_ROOT;
     use strict 'refs';
 }
