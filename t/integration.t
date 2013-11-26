@@ -20,14 +20,14 @@ $libroot_dir =~ s/\Q$libroot_module\E$//;
 
 sub run_code
 {
-    my ($script_root, $inc_subdir, $filename, $code, %allcode) = @_;
+    my ($script_root, $inc_dir, $filename, $code, %allcode) = @_;
 
     mkpath $script_root;
-    mkpath my $inc_dir = "$script_root/$inc_subdir";
 
     $allcode{$filename} = $code;
     for (keys %allcode) {
-        open my $f, ">", "$script_root/$_" or die "$script_root/$_";
+        my $fname = $_ =~ m{^/} ? $_ : "$script_root/$_";
+        open my $f, ">", $fname or die $fname, $!;
         print $f $allcode{$_};
         close $f;
     }
@@ -55,6 +55,7 @@ sub test_case {
     ok $script_dir =~ /^\Q$git_dir\E/;
 
     my $full_script_dir = "$tmp_dir/$script_dir";
+    mkpath my $inc_dir = "$tmp_dir/$script_dir/inc";
     mkpath my $full_git_dir = "$tmp_dir/$git_dir/.git";
 
     my ($res, $status);
@@ -86,7 +87,7 @@ sub test_case {
     is $status, 0;
     unlike $res, regexp_for_anydir($tmp_dir, $git_dir), "should not set lib with :set_root";
 
-    ($res, $status) = run_code($full_script_dir, 'inc',
+    ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:set_root/;
@@ -101,7 +102,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice";
 
-    ($res, $status) = run_code($full_script_dir, 'inc',
+    ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:lib/;
@@ -116,7 +117,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice with lib tag";
 
-    ($res, $status) = run_code($full_script_dir, 'inc',
+    ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
             use mymod;
             use lib::gitroot qw/:lib/;
@@ -131,7 +132,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice with lib and set_root";
 
-    ($res, $status) = run_code($full_script_dir, 'inc',
+    ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
             use mymod1;
             use mymod2;
@@ -149,7 +150,7 @@ sub test_case {
     isnt $status, 0;
     like $res, qr/Git Root aready set/, "should not set root twice when used from different modules";
 
-    ($res, $status) = run_code($full_script_dir, 'inc',
+    ($res, $status) = run_code($full_script_dir, $inc_dir,
         'file.pl' => q{
             use mymod1;
             use mymod2;
