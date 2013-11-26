@@ -8,10 +8,11 @@ our $_GIT_ROOT = undef;
 
 sub GIT_ROOT { $_GIT_ROOT };
 
+our %_default_values = ( lib => 'lib' );
+
 sub import
 {
-    my ($class, %args) = map { /^:(.*)$/ ? ($1 => '1') : $_ } @_;
-    $args{lib} = 'lib' if defined $args{lib} && $args{lib} eq '1'; # TODO: fix
+    my ($class, %args) = map { /^:(.*)$/ ? ($1 => $_default_values{$1} || 1) : $_ } @_;
     $args{set_root} = 1 if defined $args{lib};
 
     my ($module, $filename) = caller;
