@@ -8,6 +8,7 @@ use File::Temp qw/tempdir/;
 use File::Path;
 use Test::More;
 use File::Spec;
+use Capture::Tiny qw/capture_merged/;
 
 plan tests => 84;
 
@@ -34,8 +35,10 @@ sub run_code
         print $f $allcode{$_};
         close $f;
     }
-    my $res = `$^X -I$libroot_dir -I$inc_dir $script_root/$filename 2>&1`;
-    my $status = $?;
+    my ($res, $status) = capture_merged {
+        system $^X, '-I', $libroot_dir, '-I', $inc_dir, "$script_root/$filename";
+        $?;
+    };
     unlink $_ for keys %allcode;
     ($res, $status);
 }
