@@ -39,7 +39,7 @@ sub run_code
         system $^X, '-I', $libroot_dir, '-I', $inc_dir, "$script_root/$filename";
         $?;
     };
-    unlink $_ for keys %allcode;
+    unlink keys %allcode;
     ($res, $status);
 }
 

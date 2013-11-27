@@ -6,7 +6,6 @@ use lib::gitroot ();
 use File::Spec;
 use Test::Spec;
 use Test::Deep;
-use Data::Dumper;
 
 sub localize_gitroot
 {
