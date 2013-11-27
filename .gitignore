@@ -20,4 +20,3 @@ pm_to_blib
 *.komodoproject
 .komodotools/
 lib-gitroot-*/
-lib-gitroot-*.tar.gz
