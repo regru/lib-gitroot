@@ -18,14 +18,14 @@ my %module_build_args = (
     "Victor Efimov <efimov\@reg.ru>"
   ],
   "dist_name" => "lib-gitroot",
-  "dist_version" => "0.001",
+  "dist_version" => "0.002",
   "license" => "perl",
   "module_name" => "lib::gitroot",
   "recommends" => {},
   "recursive_test_files" => 1,
   "requires" => {
+    "File::Spec" => 0,
     "Modern::Perl" => 0,
-    "Test::Spec" => 0,
     "lib" => 0,
     "perl" => "5.010000"
   },
@@ -33,11 +33,11 @@ my %module_build_args = (
   "test_requires" => {
     "Capture::Tiny" => 0,
     "File::Path" => 0,
-    "File::Spec" => 0,
     "File::Temp" => "0.16",
     "Test::Deep" => 0,
     "Test::More" => 0,
-    "Test::Pod" => "1.22"
+    "Test::Pod" => "1.22",
+    "Test::Spec" => 0
   }
 );
 
@@ -45,12 +45,12 @@ my %module_build_args = (
 my %fallback_build_requires = (
   "Capture::Tiny" => 0,
   "File::Path" => 0,
-  "File::Spec" => 0,
   "File::Temp" => "0.16",
   "Module::Build" => "0.3601",
   "Test::Deep" => 0,
   "Test::More" => 0,
-  "Test::Pod" => "1.22"
+  "Test::Pod" => "1.22",
+  "Test::Spec" => 0
 );
 
 
