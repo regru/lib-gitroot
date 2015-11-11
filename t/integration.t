@@ -10,7 +10,7 @@ use Test::More;
 use File::Spec;
 use Capture::Tiny qw/capture_merged/;
 
-plan tests => 84;
+plan tests => 90;
 
 my $tmp_dir = tempdir("XXXXXXXX", TMPDIR => 1, CLEANUP => 1);
 
@@ -24,19 +24,27 @@ my $libroot_dir = do {
 
 sub run_code
 {
-    my ($script_root, $inc_dir, $filename, $code, %allcode) = @_;
+    my ($script_root, $inc_dir, $filename, $code, $symlink, %allcode) = @_;
 
     mkpath $script_root;
 
     $allcode{$filename} = $code;
+
     for (keys %allcode) {
         my $fname = $_ =~ m{^/} ? $_ : "$script_root/$_";
         open my $f, ">", $fname or die $fname, $!;
         print $f $allcode{$_};
         close $f;
     }
+
+    my $actual_filename = "$script_root/$filename";
+    if ($symlink) {
+        symlink $actual_filename, $symlink or die;
+        $actual_filename = $symlink;
+    }
+
     my ($res, $status) = capture_merged {
-        system $^X, '-I', $libroot_dir, '-I', $inc_dir, "$script_root/$filename";
+        system $^X, '-I', $libroot_dir, '-I', $inc_dir, $actual_filename;
         $?;
     };
     unlink keys %allcode;
@@ -99,6 +107,7 @@ sub test_case {
             use lib::gitroot qw/:set_root/;
             print join("\n", @INC);
         },
+        undef,
         'inc/mymod.pm' => q{
             use lib::gitroot qw/:set_root/;
             1;
@@ -114,6 +123,7 @@ sub test_case {
             use lib::gitroot qw/:lib/;
             print join("\n", @INC);
         },
+        undef,
         'inc/mymod.pm' => q{
             use lib::gitroot qw/:lib/;
             print join("\n", @INC);
@@ -129,6 +139,7 @@ sub test_case {
             use lib::gitroot qw/:lib/;
             print join("\n", @INC);
         },
+        undef,
         'inc/mymod.pm' => q{
             use lib::gitroot qw/:set_root/;
             print join("\n", @INC);
@@ -143,6 +154,7 @@ sub test_case {
             use mymod1;
             use mymod2;
         },
+        undef,
         'inc/mymod1.pm' => q{
             use lib::gitroot qw/:lib/;
             1;
@@ -162,6 +174,7 @@ sub test_case {
             use mymod2;
             print join("\n", @INC);
         },
+        undef,
         'inc/commonmod.pm' => q{
             package commonmod;
             use lib::gitroot qw/:lib/;
@@ -192,6 +205,7 @@ test_case ('project/A/B/C', 'file.pl', 'project');
 
 mkpath "$tmp_dir/mainproject/scripts";
 mkpath "$tmp_dir/mainproject/.git";
+mkpath "$tmp_dir/symlinks";
 mkpath "$tmp_dir/library";
 
 my ($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
@@ -199,6 +213,7 @@ my ($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
         use CommonMod;
         print join("\n", @INC);
     },
+    undef,
     "$tmp_dir/library/CommonMod.pm" => q{
         package CommonMod;
         use lib::gitroot ();
@@ -218,6 +233,7 @@ like $res, qr{mainproject/lib};
         use SomeMod;
         print join("\n", @INC);
     },
+    undef,
     "$tmp_dir/library/SomeMod.pm" => q{
         package SomeMod;
         use CommonMod;
@@ -235,5 +251,39 @@ like $res, qr{mainproject/lib};
 );
 is $status, 0;
 like $res, qr{mainproject/lib};
+
+
+#
+# find_git_dir
+#
+
+($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
+    'script.pl' => q{
+        use lib::gitroot ();
+        print lib::gitroot::find_git_dir();
+    },
+);
+is $status, 0;
+like $res, qr{mainproject}, "find_git_dir should work";
+
+($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
+    'script.pl' => q{
+        use lib::gitroot ();
+        print lib::gitroot::find_git_dir(undef, resolve_symlink => 1);
+    },
+);
+is $status, 0;
+like $res, qr{mainproject}, "should work with resolve_symlink even if there is no symlink";
+
+($res, $status) = run_code("$tmp_dir/mainproject", "$tmp_dir/library",
+    'script.pl' => q{
+        use lib::gitroot ();
+        print lib::gitroot::find_git_dir(undef, resolve_symlink => 1);
+    },
+    "$tmp_dir/symlinks/myscript.pl"
+);
+is $status, 0;
+like $res, qr{mainproject}, "should work with resolve_symlink if there is symlink";
+
 
 1;

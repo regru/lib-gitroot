@@ -3,6 +3,7 @@ package lib::gitroot;
 # VERSION
 
 use Modern::Perl;
+use Carp;
 use File::Spec;
 use lib ();
 
@@ -30,8 +31,7 @@ sub import
             die "Git Root already set" unless $args{once};
         } else {
             $filename //= $args{path};
-            my $absfilename = File::Spec->rel2abs($filename);
-            $_GIT_ROOT = _find_git_dir( $absfilename, _is_dir($filename) );
+            $_GIT_ROOT = _find_git_dir_for_filename($filename);
             lib->import($_GIT_ROOT.'/'.$args{lib}) if defined $args{lib} and defined $_GIT_ROOT;
         }
     }
@@ -42,12 +42,28 @@ sub import
     *{"$module\::GIT_ROOT"} = \&GIT_ROOT;
 }
 
-sub _is_dir
-{
-    -d shift();
+
+# finds .git root
+# $filename - file or directory name to start searching for .git. default to caller.
+sub find_git_dir {
+    my ($filename, %args) = @_;
+    (undef, $filename) = caller unless defined $filename;
+    $filename = _readlink($filename) if delete $args{resolve_symlink} && _is_link($filename);
+    confess "Unknown option(s) for find_git_dir: ".((keys %args)[0]) if %args;
+    _find_git_dir_for_filename($filename);
 }
 
-sub _find_git_dir
+# finds .git root
+# $filename - file or directory name to start searching for .git
+sub _find_git_dir_for_filename {
+    my ($filename) = @_;
+    _find_git_dir_for_path_and_isdir( File::Spec->rel2abs($filename), _is_dir($filename) );
+}
+
+# finds .git root
+# $abspath - file or directory name to start searching for .git. must be absolute
+# $is_dir - should be TRUE if $abspath represent directory
+sub _find_git_dir_for_path_and_isdir
 {
     my ($abspath, $is_dir) = @_;
     my @dirs = File::Spec->splitdir ( $abspath );
@@ -61,6 +77,11 @@ sub _find_git_dir
     }
     return;
 }
+
+# like -d, made as function for testing purpose
+sub _is_dir { -d shift(); };
+sub _is_link { -l shift(); };
+sub _readlink { readlink shift(); };
 
 
 1;
@@ -104,6 +125,14 @@ Exports GIT_ROOT hoping that it's set previously or will be set in the future
     use lib::gitroot ':lib', use_base_dir => "/some/path";
 
 Use some path, instead of caller filename, for searching for git
+
+    use lib::gitroot ();
+    say lib::gitroot::find_git_dir(undef, resolve_symlink => 1); # caller filename, resolve symlink
+    say lib::gitroot::find_git_dir(); # caller filename
+    say lib::gitroot::find_git_dir($filename, resolve_symlink => 1); # some filename $filename, resolve symlink
+
+If $filename is a symlink, resolves it (i.e. only top level), finds .git root. Does not alter @INC or GIT_ROOT or anything else
+
 
 =head1 AUTHOR
 

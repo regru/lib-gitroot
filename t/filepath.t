@@ -21,7 +21,7 @@ sub test_case
         like $dir, qr!^/.*\.git!;
         $gitdir{$dir};
     };
-    is lib::gitroot::_find_git_dir($absdir, $is_dir), $expecteddir;
+    is lib::gitroot::_find_git_dir_for_path_and_isdir($absdir, $is_dir), $expecteddir;
 }
 
 test_case('/A/B/C', 1, ['/A/B/.git/', '/A/B/C/.git'], '/A/B/C');
